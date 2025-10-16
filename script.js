@@ -1,140 +1,68 @@
-let tasks = [];
-let nextId = 1;
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const colorPicker = document.getElementById('color');
+const sizePicker = document.getElementById('size');
+const clearBtn = document.getElementById('clear');
+const circleBtn = document.getElementById('circle');
+const lineBtn = document.getElementById('line');
 
-// Добавление задачи
-function toList() {
-    let input = document.getElementById('bmw');
-    let text = input.value.trim();
-    if (text === '') return;
+// Размер canvas
+canvas.width = 800;
+canvas.height = 500;
 
-    tasks.push({ id: nextId, text: text });
-    nextId++;
-    input.value = '';
-    input.focus(); // возвращаем фокус в поле
-
-    saveTasks();
-    showList();
-}
-
-// Показ списка задач
-function showList() {
-    let container = document.getElementById('checkboxContainer');
-    container.innerHTML = '';
-
-    if (tasks.length === 0) {
-        container.innerHTML = "<p style='color:#aaa; text-align:center'>Список пуст 😊</p>";
-        return;
-    }
-
-    tasks.forEach(task => {
-        let item = document.createElement('div');
-        item.classList.add('added');
-
-        // чекбокс
-        let checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = task.id;
-        checkbox.checked = task.done || false;
-
-        checkbox.addEventListener("change", () => {
-            toggleDone(task.id, checkbox.checked);
-        });
-
-        // текст задачи
-        let textBox = document.createElement('input');
-        textBox.type = 'text';
-        textBox.value = task.text;
-        textBox.disabled = true;
-
-        // кнопка редактирования
-        let editBtn = document.createElement('button');
-        editBtn.innerText = "Edit";
-        editBtn.addEventListener("click", function (e) {
-            handleEdit(e, task.id);
-        });
-
-        item.appendChild(checkbox);
-        item.appendChild(textBox);
-        item.appendChild(editBtn);
-        container.appendChild(item);
-    });
-}
+let drawing = false;
+let lastX = 0;
+let lastY = 0;
+let mode = 'line';
 
 
-function handleEdit(e, id) {
-    let parent = e.target.parentElement;
-    let textBox = parent.querySelector('input[type="text"]');
-    let btn = e.target;
+circleBtn.addEventListener('click', () => mode = 'circle');
+lineBtn.addEventListener('click', () => mode = 'line');
 
-    if (textBox.disabled) {
-        textBox.disabled = false;
-        textBox.focus();
-        btn.innerText = "Save";
-    } else {
-        saveEdit(id, textBox);
-        textBox.disabled = true;
-        btn.innerText = "Edit";
+// Начало рисования
+canvas.addEventListener('mousedown', (e) => {
+    drawing = true;
+    const rect = canvas.getBoundingClientRect();
+    lastX = e.clientX - rect.left;
+    lastY = e.clientY - rect.top;
+
+
+    if (mode === 'circle') draw(e);
+});
+
+canvas.addEventListener('mouseup', () => drawing = false);
+canvas.addEventListener('mouseout', () => drawing = false);
+
+// Рисование
+canvas.addEventListener('mousemove', draw);
+
+function draw(e) {
+    if (!drawing) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    ctx.strokeStyle = colorPicker.value;
+    ctx.fillStyle = colorPicker.value;
+    ctx.lineWidth = sizePicker.value;
+    ctx.lineCap = 'round';
+
+    if (mode === 'line') {
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        lastX = x;
+        lastY = y;
+    } else if (mode === 'circle') {
+        ctx.beginPath();
+        ctx.arc(x, y, sizePicker.value, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
 
-// Сохранение отредактированного текста
-function saveEdit(id, inputEl) {
-    let newText = inputEl.value.trim();
-    if (newText !== '') {
-        tasks = tasks.map(task =>
-            task.id === id ? { ...task, text: newText } : task
-        );
-        saveTasks();
-    }
-}
-
-// Удаление выбранных задач
-function removeChecked() {
-    let container = document.getElementById('checkboxContainer');
-    let checkboxes = container.querySelectorAll('input[type="checkbox"]');
-    let idsToRemove = [];
-
-    checkboxes.forEach(cb => {
-        if (cb.checked) idsToRemove.push(Number(cb.value));
-    });
-
-    tasks = tasks.filter(task => !idsToRemove.includes(task.id));
-    saveTasks();
-    showList();
-}
-
-// Пометка выполненной задачи
-function toggleDone(id, done) {
-    tasks = tasks.map(task =>
-        task.id === id ? { ...task, done } : task
-    );
-    saveTasks();
-}
-
-// Сохранение в localStorage
-function saveTasks() {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-}
-
-// Загрузка из localStorage
-function loadTasks() {
-    let saved = localStorage.getItem('tasks');
-    if (saved) {
-        tasks = JSON.parse(saved);
-        nextId = tasks.length ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
-        showList();
-    }
-}
-
-// Очистка всех данных
-function clearData() {
-    localStorage.clear();
-    tasks = [];
-    showList();
-}
-
-// Привязка кнопки Clear
-document.getElementById('clearButton').addEventListener('click', clearData);
-
-// Загрузка при старте
-window.onload = loadTasks;
+// Очистка
+clearBtn.addEventListener('click', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+});
